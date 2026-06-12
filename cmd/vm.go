@@ -166,26 +166,77 @@ func runVmShow(cmd *cobra.Command, args []string) error {
 	}
 	vm := govm.VM
 	status, _ := govm.GetStatus()
-	fmt.Printf("Name:       %s\n", vm.Name)
-	fmt.Printf("Status:     %s\n", status)
+
+	fmt.Println("──────────────────────── VM Info ────────────────────────")
+	fmt.Printf("  Name:         %s\n", vm.Name)
+	fmt.Printf("  Status:       %s\n", status)
 	if vm.VAppParent != nil {
-		fmt.Printf("VApp:       %s\n", vm.VAppParent.Name)
+		fmt.Printf("  vApp:         %s\n", vm.VAppParent.Name)
 	}
-	if vm.VmSpecSection != nil && vm.VmSpecSection.NumCpus != nil {
-		fmt.Printf("CPU:        %d\n", *vm.VmSpecSection.NumCpus)
+	if vm.Description != "" {
+		fmt.Printf("  Description:  %s\n", vm.Description)
 	}
-	if vm.VmSpecSection != nil && vm.VmSpecSection.MemoryResourceMb != nil {
-		fmt.Printf("Memory:     %d MB\n", vm.VmSpecSection.MemoryResourceMb.Configured)
+	if vm.VmSpecSection != nil && vm.VmSpecSection.OsType != "" {
+		fmt.Printf("  Guest OS:     %s\n", vm.VmSpecSection.OsType)
 	}
+
+	fmt.Println("\n─────────────────────── Hardware ────────────────────────")
+	if vm.VmSpecSection != nil {
+		if vm.VmSpecSection.NumCpus != nil {
+			fmt.Printf("  CPU:          %d cores\n", *vm.VmSpecSection.NumCpus)
+		}
+		if vm.VmSpecSection.MemoryResourceMb != nil {
+			fmt.Printf("  Memory:       %d MB\n", vm.VmSpecSection.MemoryResourceMb.Configured)
+		}
+	}
+
+	fmt.Println("\n──────────────────────── Disks ─────────────────────────")
+	if vm.VmSpecSection != nil && vm.VmSpecSection.DiskSection != nil {
+		for i, disk := range vm.VmSpecSection.DiskSection.DiskSettings {
+			sizeGB := disk.SizeMb / 1024
+			fmt.Printf("  [%d] %-20s %d GB", i, disk.Disk.Name, sizeGB)
+			if disk.StorageProfile != nil && disk.StorageProfile.Name != "" {
+				fmt.Printf("  Storage: %s", disk.StorageProfile.Name)
+			}
+			fmt.Println()
+		}
+	} else {
+		fmt.Println("  (no disk info)")
+	}
+
+	fmt.Println("\n───────────────────────── NICs ──────────────────────────")
 	netSection, err := govm.GetNetworkConnectionSection()
-	if err != nil {
-		return err
+	if err == nil && netSection != nil {
+		for _, nic := range netSection.NetworkConnection {
+			mode := nic.IPAddressAllocationMode
+			fmt.Printf("  [%d] %-20s IP:%-15s MAC:%-17s %s Connected:%v\n",
+				nic.NetworkConnectionIndex, nic.Network, nic.IPAddress, nic.MACAddress, mode, nic.IsConnected)
+		}
+	} else {
+		fmt.Println("  (no NIC info)")
 	}
-	fmt.Println("NICs:")
-	for _, nic := range netSection.NetworkConnection {
-		fmt.Printf("  [%d] %-20s IP:%-15s MAC:%s Connected:%v\n",
-			nic.NetworkConnectionIndex, nic.Network, nic.IPAddress, nic.MACAddress, nic.IsConnected)
+
+	fmt.Println("\n─────────────────────── Storage ─────────────────────────")
+	if vm.StorageProfile != nil {
+		fmt.Printf("  Profile:      %s\n", vm.StorageProfile.Name)
 	}
+
+	fmt.Println("\n─────────────────────── Guest ─────────────────────────")
+	if vm.GuestCustomizationSection != nil {
+		gcs := vm.GuestCustomizationSection
+		fmt.Printf("  Enabled:      %t\n", gcs.Enabled)
+		fmt.Printf("  Admin Pass:   %s\n", gcs.AdminPassword)
+		if gcs.ComputerName != "" {
+			fmt.Printf("  Hostname:     %s\n", gcs.ComputerName)
+		}
+	}
+
+	fmt.Println("\n─────────────────────── vCD Info ────────────────────────")
+	fmt.Printf("  ID:           %s\n", vm.ID)
+	if vm.HREF != "" {
+		fmt.Printf("  HREF:         %s\n", vm.HREF)
+	}
+
 	return nil
 }
 

@@ -55,7 +55,6 @@ func newOrgCmd() *cobra.Command {
 }
 
 func getClientFromContext() (*client.VCDClient, *config.Context, error) {
-	// Environment variable auth (persistent, no token expiry)
 	user := os.Getenv("UNICD_USER")
 	pass := os.Getenv("UNICD_PASS")
 	host := os.Getenv("UNICD_HOST")
@@ -63,6 +62,24 @@ func getClientFromContext() (*client.VCDClient, *config.Context, error) {
 	apiVer := os.Getenv("UNICD_API_VERSION")
 	if apiVer == "" {
 		apiVer = "37.0"
+	}
+
+	if user == "" || pass == "" || host == "" || org == "" {
+		tomlCfg, err := config.LoadToml()
+		if err == nil && tomlCfg != nil {
+			if user == "" {
+				user = tomlCfg.User
+			}
+			if pass == "" {
+				pass = tomlCfg.Pass
+			}
+			if host == "" {
+				host = tomlCfg.Host
+			}
+			if org == "" {
+				org = tomlCfg.Org
+			}
+		}
 	}
 
 	if user != "" && pass != "" && host != "" && org != "" {
@@ -78,17 +95,22 @@ func getClientFromContext() (*client.VCDClient, *config.Context, error) {
 			Username:   user,
 			APIVersion: apiVer,
 		}
+		tomlCfg, _ := config.LoadToml()
+		if tomlCfg != nil {
+			ctx.VDC = tomlCfg.VDC
+		}
+		cl.VDCName = ctx.VDC
 		return cl, ctx, nil
 	}
 
 	// Fall back to session token
 	ctx, err := config.GetCurrentContext()
 	if err != nil {
-		return nil, nil, fmt.Errorf("login first: %w", err)
+		return nil, nil, fmt.Errorf("login first: run 'unicd init' or set env vars")
 	}
 	session, err := config.LoadSession()
 	if err != nil {
-		return nil, nil, fmt.Errorf("no session, login first")
+		return nil, nil, fmt.Errorf("no session, run 'unicd init' first")
 	}
 	token := session["token"]
 	authHeader := session["auth"]
