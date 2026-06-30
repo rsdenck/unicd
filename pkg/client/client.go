@@ -89,6 +89,10 @@ func (c *VCDClient) GetEdgeByName(vdcName, name string) (*govcd.EdgeGateway, err
 	return vdc.GetEdgeGatewayByName(name, true)
 }
 
+func (c *VCDClient) GetAdminOrg() (*govcd.AdminOrg, error) {
+	return c.VCDClient.GetAdminOrgByName(c.OrgName)
+}
+
 func (c *VCDClient) RawCloudAPI(method, path string, body io.Reader) ([]byte, error) {
 	u := fmt.Sprintf("https://%s%s", c.VCDClient.Client.VCDHREF.Host, path)
 	req, err := http.NewRequest(method, u, body)

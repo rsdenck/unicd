@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/vmware/go-vcloud-director/v2/types/v56"
 	"github.com/spf13/cobra"
+	"github.com/vmware/go-vcloud-director/v2/types/v56"
 )
 
 func newNetCmd() *cobra.Command {
@@ -45,16 +45,25 @@ func newNetCmd() *cobra.Command {
 	showCmd.Flags().StringP("name", "n", "", "Network name")
 	cmd.AddCommand(showCmd)
 
-	cmd.AddCommand(&cobra.Command{
+	ipamCmd := &cobra.Command{
 		Use:   "ipam",
-		Short: "Show IPAM (not implemented)",
-		RunE:  stubCmd,
-	})
-	cmd.AddCommand(&cobra.Command{
+		Short: "Show IPAM details for a network",
+		RunE:  runNetIPAM,
+	}
+	ipamCmd.Flags().StringP("name", "n", "", "Network name")
+	cmd.AddCommand(ipamCmd)
+
+	attachCmd := &cobra.Command{
 		Use:   "attach",
-		Short: "Attach network to VM (not implemented)",
-		RunE:  stubCmd,
-	})
+		Short: "Attach network to VM",
+		RunE:  runNetAttach,
+	}
+	attachCmd.Flags().StringP("name", "n", "", "Network name")
+	attachCmd.Flags().StringP("vm", "", "", "VM name")
+	attachCmd.Flags().String("ip", "", "IP address (MANUAL mode)")
+	attachCmd.Flags().String("mode", "POOL", "IP allocation mode (MANUAL|DHCP|POOL)")
+	cmd.AddCommand(attachCmd)
+
 	return cmd
 }
 
@@ -110,10 +119,10 @@ func runNetCreate(cmd *cobra.Command, args []string) error {
 			FenceMode: netType,
 			IPScopes: &types.IPScopes{
 				IPScope: []*types.IPScope{{
-					Gateway: gateway,
-					Netmask: netmask,
-					DNS1:    dns1,
-					DNS2:    "8.8.8.8",
+					Gateway:       gateway,
+					Netmask:       netmask,
+					DNS1:          dns1,
+					DNS2:          "8.8.8.8",
 					IPRanges: &types.IPRanges{
 						IPRange: []*types.IPRange{{
 							StartAddress: ipStartFromGateway(gateway, prefix),
@@ -231,7 +240,7 @@ func runNetShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Name:        %s\n", n.Name)
 	fmt.Printf("ID:          %s\n", n.ID)
 	fmt.Printf("Fence Mode:  %s\n", n.Configuration.FenceMode)
-			if n.Configuration.IPScopes != nil && len(n.Configuration.IPScopes.IPScope) > 0 {
+	if n.Configuration.IPScopes != nil && len(n.Configuration.IPScopes.IPScope) > 0 {
 		s := n.Configuration.IPScopes.IPScope[0]
 		fmt.Printf("Gateway:     %s\n", s.Gateway)
 		fmt.Printf("Netmask:     %s\n", s.Netmask)
@@ -241,6 +250,105 @@ func runNetShow(cmd *cobra.Command, args []string) error {
 	if n.EdgeGateway != nil {
 		fmt.Printf("Edge GW:     %s\n", n.EdgeGateway.Name)
 	}
+	return nil
+}
+
+func runNetIPAM(cmd *cobra.Command, args []string) error {
+	name, _ := cmd.Flags().GetString("name")
+	if name == "" {
+		return fmt.Errorf("--name is required")
+	}
+	cl, ctx, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	vdc, err := cl.GetVDC(ctx.VDC)
+	if err != nil {
+		return err
+	}
+	net, err := vdc.GetOrgVdcNetworkByName(name, true)
+	if err != nil {
+		return err
+	}
+	n := net.OrgVDCNetwork
+	fmt.Printf("Network:      %s (%s)\n", n.Name, n.ID)
+	if n.Configuration == nil || n.Configuration.IPScopes == nil {
+		fmt.Println("No IP scopes configured")
+		return nil
+	}
+	for i, scope := range n.Configuration.IPScopes.IPScope {
+		fmt.Printf("Scope %d:\n", i+1)
+		fmt.Printf("  Gateway:       %s\n", scope.Gateway)
+		fmt.Printf("  Netmask:       %s\n", scope.Netmask)
+		fmt.Printf("  Prefix:        %s\n", scope.SubnetPrefixLength)
+		fmt.Printf("  DNS1:          %s\n", scope.DNS1)
+		fmt.Printf("  DNS2:          %s\n", scope.DNS2)
+		fmt.Printf("  DNSSuffix:     %s\n", scope.DNSSuffix)
+		fmt.Printf("  Enabled:       %t\n", scope.IsEnabled)
+		if scope.IPRanges != nil && len(scope.IPRanges.IPRange) > 0 {
+			fmt.Println("  IP Ranges:")
+			for _, r := range scope.IPRanges.IPRange {
+				fmt.Printf("    %s - %s\n", r.StartAddress, r.EndAddress)
+			}
+		}
+		if scope.AllocatedIPAddresses != nil && len(scope.AllocatedIPAddresses.IPAddress) > 0 {
+			fmt.Println("  Allocated IPs:")
+			for _, ip := range scope.AllocatedIPAddresses.IPAddress {
+				fmt.Printf("    %s\n", ip)
+			}
+		}
+	}
+	return nil
+}
+
+func runNetAttach(cmd *cobra.Command, args []string) error {
+	vmName, _ := cmd.Flags().GetString("vm")
+	netName, _ := cmd.Flags().GetString("name")
+	ip, _ := cmd.Flags().GetString("ip")
+	mode, _ := cmd.Flags().GetString("mode")
+
+	if vmName == "" || netName == "" {
+		return fmt.Errorf("--vm and --name are required")
+	}
+
+	cl, ctx, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	govm, err := findVM(cl, ctx, vmName)
+	if err != nil {
+		return err
+	}
+	netSection, err := govm.GetNetworkConnectionSection()
+	if err != nil {
+		return err
+	}
+	idx := 0
+	for _, n := range netSection.NetworkConnection {
+		if n.NetworkConnectionIndex >= idx {
+			idx = n.NetworkConnectionIndex + 1
+		}
+	}
+	modeUpper := "POOL"
+	switch mode {
+	case "MANUAL":
+		modeUpper = "MANUAL"
+	case "DHCP":
+		modeUpper = "DHCP"
+	}
+	conn := &types.NetworkConnection{
+		NetworkConnectionIndex:  idx,
+		Network:                 netName,
+		IPAddress:               ip,
+		IpType:                  "IPV4",
+		IsConnected:             true,
+		IPAddressAllocationMode: modeUpper,
+	}
+	netSection.NetworkConnection = append(netSection.NetworkConnection, conn)
+	if err := govm.UpdateNetworkConnectionSection(netSection); err != nil {
+		return fmt.Errorf("attaching network: %w", err)
+	}
+	fmt.Printf("Network %q attached to VM %q (NIC %d)\n", netName, vmName, idx)
 	return nil
 }
 

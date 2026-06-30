@@ -13,7 +13,7 @@ func newOrgCmd() *cobra.Command {
 	}
 	cmd.AddCommand(&cobra.Command{
 		Use:   "list",
-		Short: "List organizations",
+		Short: "Show organization info",
 		RunE: runOrgList,
 	})
 	cmd.AddCommand(&cobra.Command{
@@ -21,14 +21,15 @@ func newOrgCmd() *cobra.Command {
 		Short: "Show organization details",
 		RunE: runOrgShow,
 	})
+
 	usersCmd := &cobra.Command{
 		Use:   "users",
 		Short: "User operations",
 	}
 	usersCmd.AddCommand(&cobra.Command{
 		Use:   "list",
-		Short: "List users (not implemented)",
-		RunE: stubCmd,
+		Short: "List users",
+		RunE: runOrgUsersList,
 	})
 	cmd.AddCommand(usersCmd)
 
@@ -38,15 +39,15 @@ func newOrgCmd() *cobra.Command {
 	}
 	rolesCmd.AddCommand(&cobra.Command{
 		Use:   "list",
-		Short: "List roles (not implemented)",
-		RunE: stubCmd,
+		Short: "List roles",
+		RunE: runOrgRolesList,
 	})
 	cmd.AddCommand(rolesCmd)
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "permissions",
-		Short: "Show permissions (not implemented)",
-		RunE: stubCmd,
+		Short: "Show permissions per role",
+		RunE: runOrgPermissions,
 	})
 	return cmd
 }
@@ -82,6 +83,74 @@ func runOrgShow(cmd *cobra.Command, args []string) error {
 		for _, l := range o.Link {
 			fmt.Printf("  Link: %s (%s)\n", l.Name, l.Rel)
 		}
+	}
+	return nil
+}
+
+func runOrgUsersList(cmd *cobra.Command, args []string) error {
+	cl, _, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	adminOrg, err := cl.GetAdminOrg()
+	if err != nil {
+		return fmt.Errorf("getting admin org: %w", err)
+	}
+	if adminOrg.AdminOrg.Users == nil || len(adminOrg.AdminOrg.Users.User) == 0 {
+		fmt.Println("No users found")
+		return nil
+	}
+	for _, u := range adminOrg.AdminOrg.Users.User {
+		fmt.Printf("%-24s %s\n", u.Name, u.ID)
+	}
+	return nil
+}
+
+func runOrgRolesList(cmd *cobra.Command, args []string) error {
+	cl, _, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	adminOrg, err := cl.VCDClient.GetAdminOrgByName(cl.OrgName)
+	if err != nil {
+		return fmt.Errorf("getting admin org: %w", err)
+	}
+	roles, err := adminOrg.GetAllRoles(nil)
+	if err != nil {
+		return fmt.Errorf("listing roles: %w", err)
+	}
+	for _, r := range roles {
+		fmt.Printf("%-24s %s\n", r.Role.Name, r.Role.ID)
+	}
+	return nil
+}
+
+func runOrgPermissions(cmd *cobra.Command, args []string) error {
+	cl, _, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	adminOrg, err := cl.VCDClient.GetAdminOrgByName(cl.OrgName)
+	if err != nil {
+		return fmt.Errorf("getting admin org: %w", err)
+	}
+	roles, err := adminOrg.GetAllRoles(nil)
+	if err != nil {
+		return fmt.Errorf("listing roles: %w", err)
+	}
+	for _, r := range roles {
+		fmt.Printf("Role: %s\n", r.Role.Name)
+		rights, err := r.GetRights(nil)
+		if err != nil {
+			fmt.Printf("  rights: %v\n", err)
+		} else if len(rights) == 0 {
+			fmt.Println("  (no rights assigned)")
+		} else {
+			for _, rt := range rights {
+				fmt.Printf("  - %s\n", rt.Name)
+			}
+		}
+		fmt.Println()
 	}
 	return nil
 }
