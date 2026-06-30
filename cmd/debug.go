@@ -21,7 +21,7 @@ func newDebugCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("OS:      %s\n", runtime.GOOS)
 			fmt.Printf("Arch:    %s\n", runtime.GOARCH)
-			fmt.Printf("Version: 1.0.0\n")
+			fmt.Printf("Version: %s\n", Version)
 			return nil
 		},
 	})

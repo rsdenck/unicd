@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/denck/unicd/pkg/client"
 	"github.com/denck/unicd/pkg/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 func newLoginCmd() *cobra.Command {
@@ -27,7 +29,12 @@ func newLoginCmd() *cobra.Command {
 			}
 			if pass == "" {
 				fmt.Print("Password: ")
-				fmt.Scanln(&pass)
+				raw, err := term.ReadPassword(syscall.Stdin)
+				if err != nil {
+					return fmt.Errorf("reading password: %w", err)
+				}
+				pass = string(raw)
+				fmt.Println()
 			}
 			if host == "" {
 				host = os.Getenv("UNICD_HOST")

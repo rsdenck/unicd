@@ -21,7 +21,10 @@ func newConfigCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			data, _ := json.MarshalIndent(cfg, "", "  ")
+			data, err := json.MarshalIndent(cfg, "", "  ")
+			if err != nil {
+				return err
+			}
 			fmt.Println(string(data))
 			return nil
 		},

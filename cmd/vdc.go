@@ -60,8 +60,8 @@ func newVDCCmd() *cobra.Command {
 	}
 	storageCmd.AddCommand(&cobra.Command{
 		Use:   "list",
-		Short: "List storage policies (not implemented)",
-		RunE:  stubCmd,
+		Short: "List storage policies",
+		RunE:  runVDCStorageList,
 	})
 	cmd.AddCommand(storageCmd)
 
@@ -174,6 +174,25 @@ func runVDCShow(cmd *cobra.Command, args []string) error {
 	}
 	if v.NetworkQuota != 0 {
 		fmt.Printf("Net Quota:   %d\n", v.NetworkQuota)
+	}
+	return nil
+}
+
+func runVDCStorageList(cmd *cobra.Command, args []string) error {
+	cl, ctx, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	vdc, err := cl.GetVDC(ctx.VDC)
+	if err != nil {
+		return err
+	}
+	if vdc.Vdc.VdcStorageProfiles == nil {
+		fmt.Println("No storage profiles found")
+		return nil
+	}
+	for _, sp := range vdc.Vdc.VdcStorageProfiles.VdcStorageProfile {
+		fmt.Printf("%-30s %s\n", sp.Name, sp.ID)
 	}
 	return nil
 }

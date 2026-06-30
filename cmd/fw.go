@@ -174,7 +174,9 @@ func runFwCreate(cmd *cobra.Command, args []string) error {
 	var existing struct {
 		UserDefinedRules []map[string]any `json:"userDefinedRules"`
 	}
-	json.Unmarshal(existingData, &existing)
+	if err := json.Unmarshal(existingData, &existing); err != nil {
+		return fmt.Errorf("parsing existing rules: %w", err)
+	}
 
 	source, _ := cmd.Flags().GetString("source")
 	dest, _ := cmd.Flags().GetString("destination")
@@ -197,11 +199,26 @@ func runFwCreate(cmd *cobra.Command, args []string) error {
 		"enabled":     true,
 	}
 	if source != "" && source != "any" {
+		newRule["sourceFirewallGroups"] = []map[string]any{
+			{"type": "IPV4_ADDRESS", "name": source, "ipAddresses": []string{source}},
+		}
 	}
 	if dest != "" && dest != "any" {
+		newRule["destinationFirewallGroups"] = []map[string]any{
+			{"type": "IPV4_ADDRESS", "name": dest, "ipAddresses": []string{dest}},
+		}
 	}
 	if port > 0 {
+		proto := "TCP"
+		if protocol == "udp" {
+			proto = "UDP"
+		}
+		newRule["applicationPortProfiles"] = []map[string]any{
+			{"name": fmt.Sprintf("%s-port-%d", proto, port), "applicationProtocol": proto, "ports": []string{fmt.Sprintf("%d", port)}},
+		}
 	}
+
+
 
 	allRules := existing.UserDefinedRules
 	newJSON, _ := json.Marshal(newRule)

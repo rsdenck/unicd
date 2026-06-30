@@ -1,0 +1,26 @@
+# Binaries
+unicd
+unicd.exe
+unicd.test
+
+# Build artifacts
+/tmp/
+
+# Local config / session
+.unicd/
+config.json
+session.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

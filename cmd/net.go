@@ -125,7 +125,15 @@ func runNetCreate(cmd *cobra.Command, args []string) error {
 		},
 	}
 	if netType == "routed" || netType == "natRouted" {
-		eg, err := cl.GetEdgeByName(ctx.VDC, "RT-EGDE")
+		edges, err := cl.ListEdgeGateways(ctx.VDC)
+		if err != nil {
+			return fmt.Errorf("listing edge gateways: %w", err)
+		}
+		if len(edges) == 0 {
+			return fmt.Errorf("no edge gateways available in VDC")
+		}
+		edgeName := edges[0].Name
+		eg, err := cl.GetEdgeByName(ctx.VDC, edgeName)
 		if err != nil {
 			return fmt.Errorf("finding edge gateway: %w", err)
 		}

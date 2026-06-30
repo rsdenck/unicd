@@ -12,10 +12,17 @@ func newLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Remove local session",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config.ClearSession()
-			cfg, _ := config.Load()
+			if err := config.ClearSession(); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: %v\n", err)
+			}
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
 			cfg.CurrentContext = ""
-			config.Save(cfg)
+			if err := config.Save(cfg); err != nil {
+				return err
+			}
 			fmt.Println("Logged out")
 			return nil
 		},

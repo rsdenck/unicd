@@ -96,6 +96,7 @@ func newVmCmd() *cobra.Command {
 		RunE:  runVmSyncNics,
 	}
 	cmd.AddCommand(syncCmd)
+	cmd.AddCommand(newVmMediaCmd())
 	return cmd
 }
 
