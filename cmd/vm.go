@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/denck/unicd/pkg/client"
 	"github.com/denck/unicd/pkg/config"
@@ -96,6 +97,19 @@ func newVmCmd() *cobra.Command {
 		RunE:  runVmSyncNics,
 	}
 	cmd.AddCommand(syncCmd)
+
+	editCmd := &cobra.Command{
+		Use:   "edit",
+		Short: "Edit VM name, description, hostname, or guest properties",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runVmEdit,
+	}
+	editCmd.Flags().String("name", "", "New VM name")
+	editCmd.Flags().String("description", "", "New VM description")
+	editCmd.Flags().String("hostname", "", "New guest hostname")
+	editCmd.Flags().String("script", "", "Customization script file path")
+	cmd.AddCommand(editCmd)
+
 	cmd.AddCommand(newVmMediaCmd())
 	return cmd
 }
@@ -666,6 +680,76 @@ func runVmDiskResize(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return fmt.Errorf("disk index %d not found", diskIdx)
+}
+
+func runVmEdit(cmd *cobra.Command, args []string) error {
+	cl, ctx, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	govm, err := findVM(cl, ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	newName, _ := cmd.Flags().GetString("name")
+	description, _ := cmd.Flags().GetString("description")
+	hostname, _ := cmd.Flags().GetString("hostname")
+	scriptPath, _ := cmd.Flags().GetString("script")
+
+	if newName == "" && description == "" && hostname == "" && scriptPath == "" {
+		return fmt.Errorf("at least one flag is required: --name, --description, --hostname, --script")
+	}
+
+	if scriptPath != "" {
+		data, err := os.ReadFile(scriptPath)
+		if err != nil {
+			return fmt.Errorf("reading script file: %w", err)
+		}
+		task, err := govm.RunCustomizationScript(hostname, string(data))
+		if err != nil {
+			return fmt.Errorf("running customization script: %w", err)
+		}
+		if err := task.WaitTaskCompletion(); err != nil {
+			return err
+		}
+		fmt.Printf("Customization script applied to %q\n", args[0])
+		return nil
+	}
+
+	if hostname != "" {
+		enabled := true
+		section := &types.GuestCustomizationSection{
+			ComputerName: hostname,
+			Enabled:      &enabled,
+		}
+		_, err := govm.SetGuestCustomizationSection(section)
+		if err != nil {
+			return fmt.Errorf("setting hostname: %w", err)
+		}
+		fmt.Printf("Hostname set to %q\n", hostname)
+	}
+
+	if newName != "" || description != "" {
+		changed := false
+		if newName != "" {
+			govm.VM.Name = newName
+			changed = true
+		}
+		if description == "" {
+			description = govm.VM.Description
+		}
+		if changed {
+			spec := govm.VM.VmSpecSection
+			_, err := govm.UpdateVmSpecSection(spec, description)
+			if err != nil {
+				return fmt.Errorf("updating VM: %w", err)
+			}
+			fmt.Printf("VM %q updated\n", args[0])
+		}
+	}
+
+	return nil
 }
 
 func init() {
