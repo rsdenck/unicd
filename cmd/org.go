@@ -49,6 +49,7 @@ func newOrgCmd() *cobra.Command {
 		Short: "Show permissions per role",
 		RunE: runOrgPermissions,
 	})
+	RegisterOrgDelCmd(cmd)
 	return cmd
 }
 

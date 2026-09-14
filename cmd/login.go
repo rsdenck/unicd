@@ -29,7 +29,7 @@ func newLoginCmd() *cobra.Command {
 			}
 			if pass == "" {
 				fmt.Print("Password: ")
-				raw, err := term.ReadPassword(syscall.Stdin)
+				raw, err := term.ReadPassword(int(syscall.Stdin))
 				if err != nil {
 					return fmt.Errorf("reading password: %w", err)
 				}
