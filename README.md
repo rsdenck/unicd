@@ -1,4 +1,4 @@
-# unicd — Unifique Cloud CLI
+#    Unifique Cloud CLI
 
 <p align="center">
   <strong>CLI oficial para gerenciar recursos no Unifique Cloud</strong><br>
