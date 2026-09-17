@@ -28,12 +28,12 @@ jobs:
             goarch: arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -54,7 +54,7 @@ jobs:
             -o "dist/unicd_${version}_${GOOS}_${GOARCH}${ext}" .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unicd_${{ matrix.goos }}_${{ matrix.goarch }}
           path: dist/*
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -76,9 +76,43 @@ jobs:
           cd dist
           sha256sum * > checksums.txt
 
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*
-          generate_release_notes: true
+      - name: Create release (draft)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          repo="${GITHUB_REPOSITORY}"
+          gh release delete "$tag" --repo "$repo" --yes --cleanup-tag=false >/dev/null 2>&1 || true
+          gh release create "$tag" --repo "$repo" \
+            --draft --verify-tag --generate-notes --title "$tag"
+
+      - name: Upload assets (with retry)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          repo="${GITHUB_REPOSITORY}"
+          shopt -s nullglob
+          for f in dist/*; do
+            attempt=0
+            until gh release upload "$tag" "$f" --repo "$repo" --clobber; do
+              attempt=$((attempt+1))
+              if [ "$attempt" -ge 6 ]; then
+                echo "::error::falha ao enviar $f apos $attempt tentativas"
+                exit 1
+              fi
+              echo "retry ${attempt}/6 para $f em $((attempt*10))s"
+              sleep $((attempt*10))
+            done
+          done
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          repo="${GITHUB_REPOSITORY}"
+          gh release edit "$tag" --repo "$repo" --draft=false --latest
