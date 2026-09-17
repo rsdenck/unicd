@@ -6,9 +6,9 @@ import (
 
 	"github.com/denck/unicd/pkg/client"
 	"github.com/denck/unicd/pkg/config"
+	"github.com/spf13/cobra"
 	"github.com/vmware/go-vcloud-director/v2/govcd"
 	"github.com/vmware/go-vcloud-director/v2/types/v56"
-	"github.com/spf13/cobra"
 )
 
 func newVmCmd() *cobra.Command {

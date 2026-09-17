@@ -4,12 +4,16 @@ unicd.exe
 unicd.test
 
 # Build artifacts
+/dist/
 /tmp/
+*.tar.gz
 
 # Local config / session
 .unicd/
 config.json
 session.json
+s3.json
+s3.credentials
 
 # IDE
 .idea/

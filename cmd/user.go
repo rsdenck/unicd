@@ -117,12 +117,12 @@ func runUserCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	userData := govcd.OrgUserConfiguration{
-		Name:        name,
-		Password:    password,
-		RoleName:    role,
-		IsEnabled:   enabled,
-		FullName:    fullName,
-		Description: description,
+		Name:         name,
+		Password:     password,
+		RoleName:     role,
+		IsEnabled:    enabled,
+		FullName:     fullName,
+		Description:  description,
 		EmailAddress: email,
 	}
 	_, err = adminOrg.CreateUserSimple(userData)
@@ -159,10 +159,10 @@ func runUserList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	type userRecord struct {
-		Name  string `xml:"name,attr"`
-		Role  string `xml:"role,attr"`
+		Name      string `xml:"name,attr"`
+		Role      string `xml:"role,attr"`
 		IsEnabled string `xml:"isEnabled,attr"`
-		Email string `xml:"emailAddress,attr"`
+		Email     string `xml:"emailAddress,attr"`
 	}
 	type queryRecords struct {
 		User []userRecord `xml:"UserRecord"`

@@ -5,9 +5,9 @@ import (
 
 	"github.com/denck/unicd/pkg/client"
 	"github.com/denck/unicd/pkg/config"
+	"github.com/spf13/cobra"
 	"github.com/vmware/go-vcloud-director/v2/govcd"
 	"github.com/vmware/go-vcloud-director/v2/types/v56"
-	"github.com/spf13/cobra"
 )
 
 func newIpsecCmd() *cobra.Command {
@@ -170,12 +170,12 @@ func runIpsecCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	config := &types.NsxtIpSecVpnTunnel{
-		Name:        name,
-		Description: description,
-		Enabled:     enabled,
+		Name:         name,
+		Description:  description,
+		Enabled:      enabled,
 		PreSharedKey: psk,
 		LocalEndpoint: types.NsxtIpSecVpnTunnelLocalEndpoint{
-			LocalAddress: localIP,
+			LocalAddress:  localIP,
 			LocalNetworks: splitCSV(localNet),
 		},
 		RemoteEndpoint: types.NsxtIpSecVpnTunnelRemoteEndpoint{

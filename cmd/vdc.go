@@ -15,12 +15,12 @@ func newVDCCmd() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List VDCs",
-		RunE: runVDCList,
+		RunE:  runVDCList,
 	})
 	cmd.AddCommand(&cobra.Command{
 		Use:   "show",
 		Short: "Show VDC details",
-		RunE: runVDCShow,
+		RunE:  runVDCShow,
 	})
 
 	createCmd := &cobra.Command{

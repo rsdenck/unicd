@@ -50,7 +50,7 @@ func newNatCmd() *cobra.Command {
 	createCmd.AddCommand(snatCmd)
 	cmd.AddCommand(createCmd)
 
-deleteCmd := &cobra.Command{
+	deleteCmd := &cobra.Command{
 		Use:   "delete <rule-id>",
 		Short: "Delete a NAT rule by ID",
 		Args:  cobra.ExactArgs(1),
@@ -356,20 +356,20 @@ func extractEdgeID(id string) string {
 }
 
 type natRule struct {
-	ID                      string           `json:"id,omitempty"`
-	Name                    string           `json:"name"`
-	Description             string           `json:"description"`
-	Enabled                 bool             `json:"enabled"`
-	RuleType                string           `json:"ruleType"`
-	ExternalAddresses       string           `json:"externalAddresses"`
-	InternalAddresses       string           `json:"internalAddresses"`
-	DnatExternalPort        string           `json:"dnatExternalPort,omitempty"`
-	ApplicationPortProfile  map[string]any   `json:"applicationPortProfile,omitempty"`
-	AppliedTo               map[string]any   `json:"appliedTo,omitempty"`
-	FirewallMatch           string           `json:"firewallMatch"`
-	Priority                int              `json:"priority"`
-	Logging                 bool             `json:"logging"`
-	SnatDestinationAddresses string          `json:"snatDestinationAddresses,omitempty"`
+	ID                       string         `json:"id,omitempty"`
+	Name                     string         `json:"name"`
+	Description              string         `json:"description"`
+	Enabled                  bool           `json:"enabled"`
+	RuleType                 string         `json:"ruleType"`
+	ExternalAddresses        string         `json:"externalAddresses"`
+	InternalAddresses        string         `json:"internalAddresses"`
+	DnatExternalPort         string         `json:"dnatExternalPort,omitempty"`
+	ApplicationPortProfile   map[string]any `json:"applicationPortProfile,omitempty"`
+	AppliedTo                map[string]any `json:"appliedTo,omitempty"`
+	FirewallMatch            string         `json:"firewallMatch"`
+	Priority                 int            `json:"priority"`
+	Logging                  bool           `json:"logging"`
+	SnatDestinationAddresses string         `json:"snatDestinationAddresses,omitempty"`
 }
 
 func buildDNATRule(extIP, intIP string, extPort, intPort int, protocol, name string) natRule {

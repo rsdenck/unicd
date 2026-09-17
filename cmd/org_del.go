@@ -191,7 +191,7 @@ func listOrgPortProfiles(cloud *cloudClient, orgUrn string) []map[string]interfa
 		}
 		var r struct {
 			Values      []map[string]interface{} `json:"values"`
-			ResultTotal int                       `json:"resultTotal"`
+			ResultTotal int                      `json:"resultTotal"`
 		}
 		json.Unmarshal(data, &r)
 		for _, v := range r.Values {

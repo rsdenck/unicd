@@ -9,17 +9,17 @@ import (
 )
 
 type fwRule struct {
-	Name                  string           `json:"name"`
-	Description           string           `json:"description"`
-	Action                string           `json:"action"`
-	ActionValue           string           `json:"actionValue"`
-	IPProtocol            string           `json:"ipProtocol"`
-	Direction             string           `json:"direction"`
-	Logging               bool             `json:"logging"`
-	Enabled               bool             `json:"enabled"`
-	SourceFirewallGroups  []map[string]any `json:"sourceFirewallGroups,omitempty"`
-	DestFirewallGroups    []map[string]any `json:"destinationFirewallGroups,omitempty"`
-	AppPortProfiles       []map[string]any `json:"applicationPortProfiles,omitempty"`
+	Name                   string           `json:"name"`
+	Description            string           `json:"description"`
+	Action                 string           `json:"action"`
+	ActionValue            string           `json:"actionValue"`
+	IPProtocol             string           `json:"ipProtocol"`
+	Direction              string           `json:"direction"`
+	Logging                bool             `json:"logging"`
+	Enabled                bool             `json:"enabled"`
+	SourceFirewallGroups   []map[string]any `json:"sourceFirewallGroups,omitempty"`
+	DestFirewallGroups     []map[string]any `json:"destinationFirewallGroups,omitempty"`
+	AppPortProfiles        []map[string]any `json:"applicationPortProfiles,omitempty"`
 	NetworkContextProfiles []map[string]any `json:"networkContextProfiles,omitempty"`
 }
 
@@ -217,8 +217,6 @@ func runFwCreate(cmd *cobra.Command, args []string) error {
 			{"name": fmt.Sprintf("%s-port-%d", proto, port), "applicationProtocol": proto, "ports": []string{fmt.Sprintf("%d", port)}},
 		}
 	}
-
-
 
 	allRules := existing.UserDefinedRules
 	newJSON, _ := json.Marshal(newRule)

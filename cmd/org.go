@@ -14,12 +14,12 @@ func newOrgCmd() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "Show organization info",
-		RunE: runOrgList,
+		RunE:  runOrgList,
 	})
 	cmd.AddCommand(&cobra.Command{
 		Use:   "show",
 		Short: "Show organization details",
-		RunE: runOrgShow,
+		RunE:  runOrgShow,
 	})
 
 	usersCmd := &cobra.Command{
@@ -29,7 +29,7 @@ func newOrgCmd() *cobra.Command {
 	usersCmd.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List users",
-		RunE: runOrgUsersList,
+		RunE:  runOrgUsersList,
 	})
 	cmd.AddCommand(usersCmd)
 
@@ -40,14 +40,14 @@ func newOrgCmd() *cobra.Command {
 	rolesCmd.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List roles",
-		RunE: runOrgRolesList,
+		RunE:  runOrgRolesList,
 	})
 	cmd.AddCommand(rolesCmd)
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "permissions",
 		Short: "Show permissions per role",
-		RunE: runOrgPermissions,
+		RunE:  runOrgPermissions,
 	})
 	RegisterOrgDelCmd(cmd)
 	return cmd

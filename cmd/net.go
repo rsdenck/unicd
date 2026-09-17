@@ -114,15 +114,15 @@ func runNetCreate(cmd *cobra.Command, args []string) error {
 
 	netConfig := &types.OrgVDCNetwork{
 		Xmlns: "http://www.vmware.com/vcloud/v1.5",
-		Name: name,
+		Name:  name,
 		Configuration: &types.NetworkConfiguration{
 			FenceMode: netType,
 			IPScopes: &types.IPScopes{
 				IPScope: []*types.IPScope{{
-					Gateway:       gateway,
-					Netmask:       netmask,
-					DNS1:          dns1,
-					DNS2:          "8.8.8.8",
+					Gateway: gateway,
+					Netmask: netmask,
+					DNS1:    dns1,
+					DNS2:    "8.8.8.8",
 					IPRanges: &types.IPRanges{
 						IPRange: []*types.IPRange{{
 							StartAddress: ipStartFromGateway(gateway, prefix),
