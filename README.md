@@ -76,9 +76,12 @@ unicd vm list
 # Login interativo
 unicd login -u meu.usuario -H vcd-tio.unifique.cloud -o MINHA_ORG
 
-# Apenas login (prompt interativo de usuário e senha)
+# Apenas login: solicita usuário, senha e ORG (todos obrigatórios)
 unicd login
 ```
+
+> O login exige **usuário, senha e ORG**. Se a ORG não for informada via `-o/--org`
+> ou `UNICD_ORG`, ela será solicitada interativamente.
 
 ### Object Storage (S3)
 
@@ -100,7 +103,7 @@ As operações de objetos são implementadas nativamente pela própria CLI, sem 
 
 | Comando | Descrição |
 |---------|-----------|
-| `unicd login [-u user] [-p pass] [-H host] [-o org]` | Autenticar no vCD |
+| `unicd login [-u user] [-p pass] [-H host] -o org` | Autenticar no vCD (ORG obrigatória) |
 | `unicd logout` | Limpar sessão local |
 | `unicd whoami` | Mostrar usuário/org/sessão atual |
 | `unicd version` | Exibir versão da CLI (commit e data de build) |

@@ -24,6 +24,9 @@ func newLoginCmd() *cobra.Command {
 				fmt.Print("Username: ")
 				fmt.Scanln(&user)
 			}
+			if user == "" {
+				return fmt.Errorf("username is required (use -u/--user or UNICD_USER)")
+			}
 			if pass == "" {
 				pass = os.Getenv("UNICD_PASS")
 			}
@@ -36,6 +39,9 @@ func newLoginCmd() *cobra.Command {
 				pass = string(raw)
 				fmt.Println()
 			}
+			if pass == "" {
+				return fmt.Errorf("password is required (use -p/--pass or UNICD_PASS)")
+			}
 			if host == "" {
 				host = os.Getenv("UNICD_HOST")
 			}
@@ -46,7 +52,11 @@ func newLoginCmd() *cobra.Command {
 				org = os.Getenv("UNICD_ORG")
 			}
 			if org == "" {
-				org = "DENCK_ORG"
+				fmt.Print("Organization: ")
+				fmt.Scanln(&org)
+			}
+			if org == "" {
+				return fmt.Errorf("organization is required (use -o/--org or UNICD_ORG)")
 			}
 
 			cl, err := client.NewClient(host, user, pass, org, "37.0", true)
