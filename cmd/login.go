@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/denck/unicd/pkg/client"
@@ -61,6 +62,9 @@ func newLoginCmd() *cobra.Command {
 
 			cl, err := client.NewClient(host, user, pass, org, "37.0", true)
 			if err != nil {
+				if isCredentialsError(err) {
+					return fmt.Errorf("login failed: invalid credentials or organization. Check the username (%q), password and organization (%q) and try again", user, org)
+				}
 				return fmt.Errorf("login failed: %w", err)
 			}
 
@@ -115,4 +119,21 @@ func newLoginCmd() *cobra.Command {
 
 func init() {
 	rootCmd.AddCommand(newLoginCmd())
+}
+
+func isCredentialsError(err error) bool {
+	lower := strings.ToLower(err.Error())
+	for _, needle := range []string{
+		"401",
+		"unauthorized",
+		"authentication failed",
+		"error authorizing",
+		"403",
+		"forbidden",
+	} {
+		if strings.Contains(lower, needle) {
+			return true
+		}
+	}
+	return false
 }
