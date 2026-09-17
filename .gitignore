@@ -13,7 +13,6 @@ unicd.test
 config.json
 session.json
 s3.json
-s3.credentials
 
 # IDE
 .idea/

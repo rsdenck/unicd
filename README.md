@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>CLI oficial para gerenciar recursos no Unifique Cloud</strong><br>
-  VMware Cloud Director (vCD) + Object Storage Dell ECS S3
+  VMware Cloud Director (vCD) + Object Storage (S3)
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 A **unicd** é a CLI do Unifique Cloud para provisionamento e operação de recursos de nuvem. Ela cobre dois grandes domínios:
 
 - **VMware Cloud Director (vCD)** — organizações (tenants), VDCs, redes, edge gateways, regras NAT, firewall, IPSec, VMs, vApps, catálogos e usuários.
-- **Object Storage (Dell ECS S3)** — buckets e objetos via endpoint S3 compatível `s3.unifique.cloud`.
+- **Object Storage (S3)** — buckets e objetos via endpoint S3 compatível `s3.unifique.cloud`.
 
 Escrita em Go, distribuída como binário único (sem dependências) e pensada tanto para uso interativo quanto para automação/scripts.
 
@@ -80,7 +80,7 @@ unicd login -u meu.usuario -H vcd-tio.unifique.cloud -o MINHA_ORG
 unicd login
 ```
 
-### Object Storage (Dell ECS S3)
+### Object Storage (S3)
 
 ```bash
 # Autenticação interativa (recomendado)
@@ -92,11 +92,7 @@ unicd s3 auth -u <access-key> -p <secret-key> --endpoint s3.unifique.cloud
 
 As credenciais ficam salvas localmente com permissão restrita (`~/.unicd/`). Use `unicd s3 config` para conferir e `unicd s3 logout` para remover.
 
-Para instalar/atualizar o motor de objetos (binário `s5cmd`) em qualquer distribuição Linux:
-
-```bash
-unicd s3 install
-```
+As operações de objetos são implementadas nativamente pela própria CLI, sem dependências externas.
 
 ## Comandos
 
@@ -238,8 +234,37 @@ unicd s3 install
 | `unicd s3 auth [-u access-key] [-p secret] [--endpoint] [--region] [--insecure] [--check=false]` | Autenticar no object storage |
 | `unicd s3 config` | Mostrar configuração S3 salva |
 | `unicd s3 logout` | Remover credenciais S3 |
-| `unicd s3 install` | Instalar/atualizar o motor de objetos |
-| `unicd s3 <subcomando>` | Executar qualquer operação de objetos |
+| `unicd s3 ls [s3://bucket[/prefix]] [-H] [--sum]` | Listar buckets ou objetos |
+| `unicd s3 cp <origem> <destino> [-r]` | Copiar arquivos/objetos |
+| `unicd s3 mv <origem> <destino> [-r]` | Mover arquivos/objetos |
+| `unicd s3 rm s3://bucket/chave [...] [-r]` | Remover objetos |
+| `unicd s3 mb s3://bucket` | Criar bucket |
+| `unicd s3 rb s3://bucket` | Remover bucket vazio |
+| `unicd s3 cat s3://bucket/chave` | Imprimir objeto em stdout |
+| `unicd s3 du s3://bucket[/prefix] [-H]` | Tamanho total de um prefixo |
+| `unicd s3 head s3://bucket/chave` | Metadados do objeto |
+| `unicd s3 presign s3://bucket/chave [-e duração] [-X GET\|PUT]` | Gerar URL pré-assinada |
+| `unicd s3 sync <origem> <destino> [--delete] [--exact-timestamps]` | Sincronizar diretório <-> bucket (via simples) |
+| `unicd s3 pipe s3://bucket/chave` | Enviar stdin para um objeto |
+
+Flags comuns de transferência (`cp`, `mv`, `sync`, `pipe`):
+
+| Flag | Descrição |
+|------|-----------|
+| `-r, --recursive` | Recursivo em diretórios/prefixos |
+| `-c, --concurrency <n>` | Transferências em paralelo (default 5) |
+| `--part-size <tam>` | Tamanho da parte no multipart (ex.: `8MB`) |
+| `--storage-class <classe>` | Classe de armazenamento do objeto |
+| `--content-type <mime>` | Content-Type |
+| `--content-encoding <enc>` | Content-Encoding |
+| `--cache-control <valor>` | Cache-Control |
+| `--metadata chave=valor` | Metadado do usuário (repetível) |
+| `--expires <RFC3339>` | Data de expiração |
+| `--no-clobber` | Não sobrescrever destino existente |
+| `--if-size-differ` | Transferir apenas quando o tamanho diferir |
+| `--include <glob>` / `--exclude <glob>` | Filtrar chaves (repetível) |
+| `--dry-run` | Simular sem transferir |
+| `--use-list-objects-v1` | Listar com V1 (default; exigido por alguns serviços) |
 
 ## Flags Globais
 
@@ -303,7 +328,6 @@ unicd vm deploy app01 "ubuntu-22.04" --network NET_VLAN100 --ip 10.124.100.50 --
 unicd vm media insert minha-vm "ISO Catalog" "ubuntu-22.04.iso"
 
 # Object Storage (S3)
-unicd s3 install
 unicd s3 auth
 
 unicd s3 ls s3://meu-bucket
@@ -346,7 +370,7 @@ unicd/
     ipsec.go            # Operacoes de IPSec VPN
     catalog.go          # Operacoes de catalogo
     user.go             # Operacoes de usuario
-    s3.go               # Operacoes de object storage (Dell ECS)
+    s3.go               # Operacoes de object storage (S3)
     debug.go            # Ferramentas de debug
     query.go            # Consultas (planejado)
     cluster.go          # Clusters (planejado)
@@ -363,7 +387,7 @@ unicd/
 - **CLI Framework:** [cobra](https://github.com/spf13/cobra)
 - **SDK vCD:** [go-vcloud-director](https://github.com/vmware/go-vcloud-director) v2.26.1
 - **API:** vCD CloudAPI (REST) + SDK nativo
-- **Object Storage:** Dell ECS S3 (compatível com o protocolo S3)
+- **Object Storage:** serviço S3-compatível `s3.unifique.cloud`
 
 ## Desenvolvimento
 
