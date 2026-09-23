@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"encoding/xml"
 	"fmt"
-	"io"
 
 	"github.com/denck/unicd/pkg/client"
 	"github.com/spf13/cobra"
@@ -158,49 +156,25 @@ func runUserList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	type userRecord struct {
-		Name      string `xml:"name,attr"`
-		Role      string `xml:"role,attr"`
-		IsEnabled string `xml:"isEnabled,attr"`
-		Email     string `xml:"emailAddress,attr"`
-	}
-	type queryRecords struct {
-		User []userRecord `xml:"UserRecord"`
-	}
-	type queryResult struct {
-		Records queryRecords `xml:"QueryResultRecords"`
-	}
-
-	href := cl.VCDClient.Client.VCDHREF
-	href.Path = "/api/query"
-	q := href.Query()
-	q.Set("type", "orgUser")
-	href.RawQuery = q.Encode()
-
-	req := cl.VCDClient.Client.NewRequestWitNotEncodedParams(nil, nil, "GET", href, nil)
-	resp, err := cl.VCDClient.Client.Http.Do(req)
+	adminOrg, err := getAdminOrgOrExit(cl)
 	if err != nil {
-		return fmt.Errorf("fetching users: %w", err)
+		return fmt.Errorf("getting admin org: %w", err)
 	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	if err := adminOrg.Refresh(); err != nil {
+		return fmt.Errorf("refreshing admin org: %w", err)
 	}
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("fetching users: API error %d: %s", resp.StatusCode, string(data))
-	}
-
-	var result queryResult
-	if err := xml.Unmarshal(data, &result); err != nil {
-		return fmt.Errorf("parsing users: %w\n%s", err, string(data))
-	}
-	if len(result.Records.User) == 0 {
+	users := adminOrg.AdminOrg.Users.User
+	if len(users) == 0 {
 		fmt.Println("No users found")
 		return nil
 	}
-	for _, u := range result.Records.User {
-		fmt.Printf("%-24s %-20s %-5s %s\n", u.Name, u.Role, u.IsEnabled, u.Email)
+	for _, ref := range users {
+		u, err := adminOrg.GetUserByHref(ref.HREF)
+		if err != nil {
+			fmt.Printf("%-28s (error loading details: %v)\n", ref.Name, err)
+			continue
+		}
+		fmt.Printf("%-28s %-24s %-7t %-8s %s\n", u.User.Name, u.GetRoleName(), u.User.IsEnabled, u.User.ProviderType, u.User.EmailAddress)
 	}
 	return nil
 }
