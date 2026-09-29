@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -60,6 +62,36 @@ func newDebugCmd() *cobra.Command {
 	apiCmd.Flags().StringP("data", "d", "", "JSON body data")
 	apiCmd.Flags().StringP("file", "f", "", "Read body from file")
 	cmd.AddCommand(apiCmd)
+
+	// port-check command
+	portCheckCmd := &cobra.Command{
+		Use:   "port-check <host> <port>",
+		Short: "Check TCP port connectivity",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			host := args[0]
+			port := args[1]
+			timeout, _ := cmd.Flags().GetInt("timeout")
+			if timeout == 0 {
+				timeout = 5
+			}
+			addr := fmt.Sprintf("%s:%s", host, port)
+			fmt.Printf("Checking %s ... ", addr)
+			start := time.Now()
+			conn, err := net.DialTimeout("tcp", addr, time.Duration(timeout)*time.Second)
+			if err != nil {
+				fmt.Printf("FAILED (%s)\n", err)
+				return nil
+			}
+			defer conn.Close()
+			elapsed := time.Since(start)
+			fmt.Printf("OK (%s)\n", elapsed)
+			return nil
+		},
+	}
+	portCheckCmd.Flags().Int("timeout", 5, "Timeout in seconds")
+	cmd.AddCommand(portCheckCmd)
+
 	return cmd
 }
 

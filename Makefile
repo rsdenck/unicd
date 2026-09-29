@@ -42,3 +42,4 @@ release:
 		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" \
 			-o dist/$(BINARY)_$(VERSION)_$${os}_$${arch}$$ext . ; \
 	done
+	@echo "Release binaries in dist/"

@@ -1,0 +1,86 @@
+# GitOps Configuration for unicd CLI
+# This file defines the GitOps workflow for the unicd project
+
+version: "1.0"
+
+project:
+  name: unicd
+  description: "Unifique Cloud CLI - vCD Provider"
+  repository: "https://github.com/rsdenck/unicd"
+  license: "MIT"
+
+# Versioning strategy
+versioning:
+  strategy: "semver"
+  file: "cmd/version.go"
+  pattern: "Version = \"{major}.{minor}.{patch}\""
+
+# Release configuration
+release:
+  # Trigger on tag push
+  trigger:
+    - "v*"
+  
+  # Assets to include
+  assets:
+    - "unicd_*_linux_amd64"
+    - "unicd_*_linux_arm64"
+    - "unicd_*_windows_amd64.exe"
+    - "unicd_*_darwin_amd64"
+    - "unicd_*_darwin_arm64"
+    - "checksums.txt"
+  
+  # Changelog generation
+  changelog:
+    enabled: true
+    format: "commits"
+    exclude:
+      - "merge"
+      - "bump"
+      - "wip"
+
+# CI/CD pipeline
+pipeline:
+  # Build matrix
+  build:
+    os: ["linux", "windows", "darwin"]
+    arch: ["amd64", "arm64"]
+  
+  # Tests
+  tests:
+    - "go vet ./..."
+    - "go test ./..."
+    - "gofmt -l ."
+  
+  # Security scanning
+  security:
+    enabled: true
+    tools:
+      - "gosec"
+      - "govulncheck"
+
+# Deployment
+deployment:
+  # Binary distribution
+  distribution:
+    - "GitHub Releases"
+    - "Homebrew Tap"
+    - "Go Install"
+  
+  # Installation methods
+  install:
+    script: "https://raw.githubusercontent.com/rsdenck/unicd/main/install.sh"
+    go: "go install github.com/rsdenck/unicd@latest"
+
+# Monitoring
+monitoring:
+  # Release metrics
+  metrics:
+    - "download_count"
+    - "install_success_rate"
+  
+  # Alerts
+  alerts:
+    - "build_failure"
+    - "test_failure"
+    - "security_vulnerability"

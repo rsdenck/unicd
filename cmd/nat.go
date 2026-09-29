@@ -72,11 +72,14 @@ func newNatCmd() *cobra.Command {
 		Short: "Remove all NAT rules (not implemented)",
 		RunE:  stubCmd,
 	})
-	cmd.AddCommand(&cobra.Command{
-		Use:   "show",
-		Short: "Show NAT rule details (not implemented)",
-		RunE:  stubCmd,
-	})
+	showCmd := &cobra.Command{
+		Use:   "show <rule-id>",
+		Short: "Show NAT rule details",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runNatShow,
+	}
+	showCmd.Flags().StringP("edge", "e", "", "Edge gateway name")
+	cmd.AddCommand(showCmd)
 	return cmd
 }
 
@@ -392,6 +395,72 @@ func buildDNATRule(extIP, intIP string, extPort, intPort int, protocol, name str
 	}
 
 	return r
+}
+
+func runNatShow(cmd *cobra.Command, args []string) error {
+	ruleID := args[0]
+	edgeName, _ := cmd.Flags().GetString("edge")
+	cl, ctx, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	if edgeName == "" {
+		edges, err := cl.ListEdgeGateways(ctx.VDC)
+		if err != nil {
+			return err
+		}
+		if len(edges) == 0 {
+			return fmt.Errorf("no edge gateways found")
+		}
+		edgeName = edges[0].Name
+	}
+	eg, err := cl.GetEdgeByName(ctx.VDC, edgeName)
+	if err != nil {
+		return err
+	}
+	edgeID := extractEdgeID(eg.EdgeGateway.ID)
+	data, err := cl.RawCloudAPI("GET", "/cloudapi/1.0.0/edgeGateways/"+edgeID+"/nat/rules", nil)
+	if err != nil {
+		return fmt.Errorf("fetching NAT rules: %w", err)
+	}
+	var result struct {
+		Values []map[string]interface{} `json:"values"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return err
+	}
+	for _, r := range result.Values {
+		id, _ := r["id"].(string)
+		if id == ruleID {
+			fmt.Printf("ID:           %s\n", id)
+			if name, ok := r["name"].(string); ok {
+				fmt.Printf("Name:         %s\n", name)
+			}
+			if rtype, ok := r["ruleType"].(string); ok {
+				fmt.Printf("Type:         %s\n", rtype)
+			}
+			if enabled, ok := r["enabled"].(bool); ok {
+				fmt.Printf("Enabled:      %t\n", enabled)
+			}
+			if ext, ok := r["externalAddresses"].(string); ok {
+				fmt.Printf("External IP:  %s\n", ext)
+			}
+			if intl, ok := r["internalAddresses"].(string); ok {
+				fmt.Printf("Internal IP:  %s\n", intl)
+			}
+			if port, ok := r["dnatExternalPort"].(string); ok && port != "" {
+				fmt.Printf("External Port: %s\n", port)
+			}
+			if port, ok := r["internalPort"].(string); ok && port != "" {
+				fmt.Printf("Internal Port: %s\n", port)
+			}
+			if desc, ok := r["description"].(string); ok && desc != "" {
+				fmt.Printf("Description:  %s\n", desc)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("rule %s not found", ruleID)
 }
 
 func init() {

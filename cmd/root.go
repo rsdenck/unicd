@@ -7,9 +7,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "unicd",
-	Short: "Unifique Cloud Director CLI - vCD Provider",
-	Long:  `Unicd is a complete VMware Cloud Director CLI provider for managing vCD resources.`,
+	Use:     "unicd",
+	Short:   "Unifique Cloud Director CLI - vCD Provider",
+	Long:    `Unicd is a complete VMware Cloud Director CLI provider for managing vCD resources.`,
+	Version: Version,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
@@ -23,6 +24,7 @@ func Execute() {
 
 func init() {
 	cobra.EnableCommandSorting = false
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 	rootCmd.PersistentFlags().Bool("no-banner", false, "Suppress the ASCII banner")
 	rootCmd.PersistentFlags().MarkHidden("no-banner")
 }

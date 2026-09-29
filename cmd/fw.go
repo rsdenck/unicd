@@ -77,6 +77,14 @@ func newFwCmd() *cobra.Command {
 		Short: "Set firewall default policy (not implemented)",
 		RunE:  stubCmd,
 	})
+	showCmd := &cobra.Command{
+		Use:   "show",
+		Short: "Show firewall rule details",
+		RunE:  runFwShow,
+	}
+	showCmd.Flags().StringP("edge", "e", "", "Edge gateway name")
+	showCmd.Flags().StringP("name", "n", "", "Rule name")
+	cmd.AddCommand(showCmd)
 	return cmd
 }
 
@@ -182,6 +190,14 @@ func runFwCreate(cmd *cobra.Command, args []string) error {
 	dest, _ := cmd.Flags().GetString("destination")
 	protocol, _ := cmd.Flags().GetString("protocol")
 	port, _ := cmd.Flags().GetInt("port")
+
+	// Validação: regras de entrada devem especificar porta/protocolo
+	if direction == "IN" && port == 0 {
+		return fmt.Errorf("--port is required for IN rules")
+	}
+	if direction == "IN" && protocol == "any" {
+		return fmt.Errorf("--protocol (tcp|udp|icmp) is required for IN rules")
+	}
 
 	ipProto := "IPV4_IPV6"
 	if protocol == "tcp" || protocol == "udp" || protocol == "icmp" {
@@ -297,6 +313,78 @@ func runFwDelete(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("Firewall rule %q deleted\n", name)
 	return nil
+}
+
+func runFwShow(cmd *cobra.Command, args []string) error {
+	edgeName, _ := cmd.Flags().GetString("edge")
+	name, _ := cmd.Flags().GetString("name")
+	if name == "" {
+		return fmt.Errorf("--name is required")
+	}
+	cl, ctx, err := getClientFromContext()
+	if err != nil {
+		return err
+	}
+	if edgeName == "" {
+		edges, err := cl.ListEdgeGateways(ctx.VDC)
+		if err != nil {
+			return err
+		}
+		if len(edges) == 0 {
+			return fmt.Errorf("no edge gateways found")
+		}
+		edgeName = edges[0].Name
+	}
+	eg, err := cl.GetEdgeByName(ctx.VDC, edgeName)
+	if err != nil {
+		return err
+	}
+	edgeID := extractEdgeID(eg.EdgeGateway.ID)
+	data, err := cl.RawCloudAPI("GET", "/cloudapi/1.0.0/edgeGateways/"+edgeID+"/firewall/rules", nil)
+	if err != nil {
+		return fmt.Errorf("fetching FW rules: %w", err)
+	}
+	var result struct {
+		UserDefinedRules []map[string]interface{} `json:"userDefinedRules"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return err
+	}
+	for _, r := range result.UserDefinedRules {
+		rname, _ := r["name"].(string)
+		if rname == name {
+			fmt.Printf("Name:        %s\n", rname)
+			if action, ok := r["action"].(string); ok {
+				fmt.Printf("Action:      %s\n", action)
+			}
+			if enabled, ok := r["enabled"].(bool); ok {
+				fmt.Printf("Enabled:     %t\n", enabled)
+			}
+			if direction, ok := r["direction"].(string); ok {
+				fmt.Printf("Direction:   %s\n", direction)
+			}
+			if ipProto, ok := r["ipProtocol"].(string); ok {
+				fmt.Printf("Protocol:    %s\n", ipProto)
+			}
+			if logging, ok := r["logging"].(bool); ok {
+				fmt.Printf("Logging:     %t\n", logging)
+			}
+			if desc, ok := r["description"].(string); ok && desc != "" {
+				fmt.Printf("Description: %s\n", desc)
+			}
+			if src, ok := r["sourceFirewallGroups"].([]interface{}); ok && len(src) > 0 {
+				fmt.Printf("Source:      %v\n", src)
+			}
+			if dst, ok := r["destinationFirewallGroups"].([]interface{}); ok && len(dst) > 0 {
+				fmt.Printf("Destination: %v\n", dst)
+			}
+			if app, ok := r["applicationPortProfiles"].([]interface{}); ok && len(app) > 0 {
+				fmt.Printf("App Ports:   %v\n", app)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("rule %q not found", name)
 }
 
 func init() {

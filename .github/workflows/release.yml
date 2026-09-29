@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., v1.5.0)"
+        required: true
+        default: "v1.5.0"
 
 permissions:
   contents: write
@@ -45,6 +51,10 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           version="${GITHUB_REF_NAME#v}"
+          if [ -z "$version" ] || [ "$version" = "$GITHUB_REF_NAME" ]; then
+            version="${{ github.event.inputs.version }}"
+            version="${version#v}"
+          fi
           commit="$(git rev-parse --short HEAD)"
           builddate="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           ext=""
@@ -65,11 +75,57 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [ -z "$tag" ] || [ "$tag" = "$GITHUB_REF" ]; then
+            tag="${{ github.event.inputs.version }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          
+          # Generate changelog from commits
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$previous_tag" ]; then
+            changes=$(git log --pretty=format:"* %s (%h)" ${previous_tag}..HEAD)
+          else
+            changes=$(git log --pretty=format:"* %s (%h)" -20)
+          fi
+          
+          cat > changelog.md << EOF
+          ## Changes in ${tag}
+          
+          ${changes}
+          
+          ## Installation
+          
+          ### Linux/macOS
+          \`\`\`bash
+          curl -fsSL https://raw.githubusercontent.com/rsdenck/unicd/main/install.sh | bash
+          \`\`\`
+          
+          ### Manual
+          Download the appropriate binary from the releases page and place it in your PATH.
+          
+          ## Verification
+          
+          \`\`\`bash
+          unicd --version
+          \`\`\`
+          EOF
+          
+          echo "changelog_path=changelog.md" >> $GITHUB_OUTPUT
 
       - name: Checksums
         run: |
@@ -81,18 +137,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ steps.changelog.outputs.tag }}"
           repo="${GITHUB_REPOSITORY}"
           gh release delete "$tag" --repo "$repo" --yes --cleanup-tag=false >/dev/null 2>&1 || true
           gh release create "$tag" --repo "$repo" \
-            --draft --verify-tag --generate-notes --title "$tag"
+            --draft --verify-tag --generate-notes --title "$tag" \
+            --notes-file changelog.md
 
       - name: Upload assets (with retry)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ steps.changelog.outputs.tag }}"
           repo="${GITHUB_REPOSITORY}"
           shopt -s nullglob
           for f in dist/*; do
@@ -113,6 +170,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ steps.changelog.outputs.tag }}"
           repo="${GITHUB_REPOSITORY}"
           gh release edit "$tag" --repo "$repo" --draft=false --latest
