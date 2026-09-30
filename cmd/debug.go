@@ -75,7 +75,7 @@ func newDebugCmd() *cobra.Command {
 			if timeout == 0 {
 				timeout = 5
 			}
-			addr := fmt.Sprintf("%s:%s", host, port)
+			addr := net.JoinHostPort(host, port)
 			fmt.Printf("Checking %s ... ", addr)
 			start := time.Now()
 			conn, err := net.DialTimeout("tcp", addr, time.Duration(timeout)*time.Second)
