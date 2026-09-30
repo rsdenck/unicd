@@ -80,6 +80,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "rsdenck"
+          git config --global user.email "piptr@protonmail.com"
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
